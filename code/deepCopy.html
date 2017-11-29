@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Deep Copy</title>
+</head>
+<body>
+  <p>实现各类型的拷贝，看一下控制台的输出</p>
+  <script>
+    function deepCopy(obj) {
+      if(obj instanceof Date) {
+        return new Date(obj.valueOf());
+      }
+      else if(obj instanceof RegExp) {
+        return new RegExp(obj.valueOf());
+      }
+      else if(obj === null || obj === undefined || typeof obj != 'object') {
+        return obj;
+      }
+
+      var newObj = (obj instanceof Array) ? [] : {};
+      for(var k in obj) {
+        if(!obj[k] != 'object') {
+          newObj[k] = obj[k];
+        }
+        else {
+          newObj[k] = deepCopy(obj[k]);
+        }
+      }
+      return newObj;
+    }
+
+    console.log(deepCopy(null));
+    console.log(deepCopy(undefined));
+    console.log(deepCopy('abccde'));
+    console.log(deepCopy(12345));
+    console.log(deepCopy(true));
+    console.log(deepCopy(new Date()));
+    console.log(deepCopy(new RegExp(/[a-z]/, 'g')));
+    console.log(deepCopy([1, 2, [3, 4, [5, 6]]]));
+    console.log(deepCopy([1, 2, 3]));
+    console.log(deepCopy({a: [1, 2, 3], b: 'ddd', c: {e: 1}}));
+  </script>
+</body>
+</html>
