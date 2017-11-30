@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+<script>
+// 父类
+function Animal(name) {
+  this.name = name || 'Animal';
+  this.color = ['red', 'black'];
+  this.sleep = function() {
+    console.log(this.name + ' is sleeping!');
+  }
+}
+
+Animal.prototype.eat = function(food) {
+  console.log(this.name + ' is eating ' + food +'!');
+}
+
+// 原型链继承
+function Cat() {
+}
+Cat.prototype = new Animal();
+Cat.prototype.constructor = Cat;
+
+
+// 构造继承
+// function Cat(name) {
+//   Animal.call(this, name);
+//   this.name = name || 'Tom';
+// }
+
+
+// 实例继承
+// function Cat(name) {
+//   var instance = new Animal();
+//   instance.name = name || 'Tom';
+//   return instance;
+// }
+
+// 拷贝继承
+// function Cat(name) {
+//   var instance = new Animal();
+//   for(var key in instance) {
+//     Cat.prototype[key] = instance[key];
+//   }
+//   Cat.prototype.name = name || 'Tom';
+// }
+
+// 组合继承
+// function Cat(name) {
+//   Animal.call(this);
+//   this.name = name || 'Tom';
+// }
+
+// Cat.prototype = new Animal();
+// Cat.prototype.constructor = Cat;
+
+// 寄生组合继承
+// function Cat(name) {
+//   Animal.call(this);
+//   this.name = name || 'Tom';
+// }
+
+// (function() {
+//   var Super = function(){};
+//   Super.prototype = Animal.prototype;
+//   Cat.prototype = new Super();
+//   Cat.prototype.constructor = Cat;
+// })();
+
+var cat = new Cat('cat');
+cat.sleep();
+console.log(cat.color);
+cat.color.push('yellow');
+console.log(cat.color);
+var cat2 = new Cat();
+console.log(cat2.color);
+console.log(cat, cat.name, cat instanceof Cat, cat instanceof Animal);
+</script>
+</body>
+</html>
