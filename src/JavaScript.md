@@ -375,7 +375,256 @@ a();	// 3;
 
 
 
+# Ajax
+
+### 创建XHR对象
+
+```javascript
+function makeRequest(url) {
+    var httpRequest;
+    if(window.XMLHttpRequest) {
+      httpRequest = new XMLHttpRequest();
+      if(httpRequest.overrideMimeType) {  // 兼容部分版本的Mozilla浏览器
+        httpRequest.overrideMimeType('text/xml');
+      }
+    }
+    else if(window.ActiveXObject) { // IE
+      try {
+        httpRequest = new ActiveXObject("Msxml.XMLHttp"); // 较高版本
+      }
+      catch(e) {
+        try {
+          httpRequest = new ActiveXObject("Microsoft.XMLHttp");
+        }
+        catch(e) {}
+      }
+    }
+    else {
+      console.log("No XHR object available.");
+    }
+
+    httpRequest.onreadystatechange = function() {buttonClick(httpRequest)};
+    httpRequest.open("GET", url, true);
+    httpRequest.send(null);
+  }
+
+  function alertContents(httpRequest) {
+    if(httpRequest.readyState == 4) {
+      if(httpRequest.status == 200) {
+        alert(httpRequest.responseText);
+      }
+      else {
+        console.log("There was a problem with the request.");
+      }
+    }
+  }
+```
+
+- open()方法：接收3个参数
+  - 发送请求的类型：注意大写，遵循HTTP标准，否则有些浏览器（如 Firefox）不会处理这些请求。
+
+
+- 请求的URL：只能向同一个域中使用相同端口和协议的URL发送请求，否则会引发安全错误。
+- 是否异步发送请求的布尔值
+
+  调用open()方法不会真正发送请求，只是启动一个请求以备发送。
+
+- send()方法：只接受一个参数，即要作为请求主体发送的数据。如果不需要通过请求主体发送数据，则必须传入null，因为这对于一些浏览器来说是必须的。
+
+- onreadystatechange函数：
+
+  XHR对象的readyState属性表示请求/响应阶段的当前状态：
+
+  - 0：未初始化。尚未调用open()方法
+  - 1：启动。已调用open()方法，尚未调用send()方法
+  - 2：发送。已调用send()方法，尚未接收到响应
+  - 3：接收。已接收到部分响应数据
+  - 4：完成。已接收到全部的响应数据，且可以在客户端上使用
+
+  只要readyState的值从一个值变为另一个值，就会触发一次readystatechange事件，可以使用这一事件检测每次状态变化后readyState的值。
+
+  - responseText：作为响应主体被返回的文本
+  - responseXML：如果响应的内容类型是“text/xml”或“application/xml”，这个属性将保存响应数据的XML DOM文档。
+
+- HTTP头部信息
+
+  - 设置HTTP头部：setRequestHeader()方法接收两个参数：头部字段的名称和头部字段的值。
+
+    ```javascript
+    httpRequest.open("GET", url, true);
+    httpRequest.setRequestHeader("MyHeader", "MyValue");
+    httpRequest.send(null);
+    ```
+
+    要成功发送请求头部信息，必须在调用open()方法之后且调用send()方法之前调用setRequestHeader()
+
+- GET请求
+
+  有时候我们需要在请求的URL末尾添加查询字符串，此时需要注意查询字符串中每个参数都需要使用encodeURIComponent()进行编码，可以实现一个函数实现这一功能：
+
+  ```javascript
+  function addURLParam(url, name, value) {
+    url += (url.indexOf("?") == -1 ? "?" : "&");
+    url += encodeURIComponent(name) + "=" + encodeURIComponent(value);
+    return url;
+  }
+  ```
+
+  注意URL的格式哦，比如一个正确的URL：
+
+  ```
+  example.php?name1=value1&name2=value2
+  ```
+
+- POST请求
+
+  使用XHR模拟表单提交：首先需要设置Content-Type头部信息设置为application/x-www-form-urlencoded，接着需要将表单中的数据进行序列化并作为参数传入send()方法中。
+
+  序列化之后的数据：
+
+  ```
+  foo=bar&baz=The+first+line
+  ```
+
+## XMLHttpRequest Level 2
+
+注意兼容性
+
+### FormData
+
+FormData可以通过JavaScript用一些键值对来模拟一系列表单控件，即创建与表单格式相同的数据（用于提供XHR传输）。
+
+```javascript
+var data = new FormData();
+data.append("name", "Nicholas");
+httpRequest.send(data);
+
+//也可以这样
+var formElement = document.querySelector("form");
+request.send(new FormData(formElement));
+```
+
+而且使用FormData不必明确在XHR对象上设置请求头部。
+
+### timeout
+
+timeout属性表示请求在等待响应多少毫秒之后会终止。当浏览器在规定时间内没有接收到响应，会触发timeout事件，进而调用ontimeout事件处理程序。
+
+```javascript
+httpRequest.open("GET", url, true);
+httpRequest.timeout = 1000;	// 1s
+httpRequest.ontimeout = function() {
+  alert("Request didi not return in a second");
+}
+httpRequest.send(null);
+```
+
+### overrideMimeType()
+
+overrideMimeType()方法用于重写XHR响应的MIME类型，比如想要将响应的数据当做XML处理而非纯文本：
+
+```javascript
+httpRequest.open("GET", url, true);
+httpRequest.overrideMimeType("text/xml");
+httpRequest.send(null);
+```
+
+### 进度事件
+
+- loadstart：在接收响应数据的第一个字节时触发。只要浏览器接收到服务器响应，就会触发load事件，所以必须要先检查status属性才能确定数据是否可用。
+
+- progress：在接收响应期间持续不断地触发，包含三个额外的属性，lengthComputable表示进度信息是否可用，position表示已接收的字节数，totalSize表示根据Content-Length响应头部确定的预期字节数
+
+- error：在请求发生错误时触发
+
+- abort：在因为调用abort()方法而终止连接时触发
+
+- load：在接收到完整响应数据时触发
+
+  ```javascript
+  httpRequest.onload = function() {
+    if(httpRequest.status == 200) {
+    	alert(httpRequest.responseText);
+    }
+    else {
+    	console.log("There was a problem with the request.");
+    }
+  }
+  ```
+
+- loadend：在通信完成或者触发error、abort或load事件后触发
+
+### 完整代码
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Hello World</title>
+</head>
+<body>
+  <p class="root">还在<i>加载中</i>i啦</p>
+  <button class="button">点击一下</button>
+  <a href="http://www.baidu.com" target="_top">下载</a>
+<script>
+  function makeRequest(url) {
+    var httpRequest;
+    if(window.XMLHttpRequest) {
+      httpRequest = new XMLHttpRequest();
+      if(httpRequest.overrideMimeType) {  // 兼容部分版本的Mozilla浏览器
+        httpRequest.overrideMimeType('text/xml');
+      }
+    }
+    else if(window.ActiveXObject) { // IE
+      try {
+        httpRequest = new ActiveXObject("Msxml.XMLHttp"); // 较高版本
+      }
+      catch(e) {
+        try {
+          httpRequest = new ActiveXObject("Microsoft.XMLHttp");
+        }
+        catch(e) {}
+      }
+    }
+    else {
+      console.log("No XHR object available.");
+    }
+
+    httpRequest.onreadystatechange = function() {buttonClick(httpRequest)};
+    httpRequest.open('GET', 'https://github.com/miraclezys/JavaScript30/blob/master/06%20-%20Type%20Ahead/index-ME.json', true);
+    httpRequest.send(null);
+
+  }
+
+  function buttonClick(httpRequest) {
+    if(httpRequest.readyState == 4) {
+      if(httpRequest.status == 200) {
+        console.log(httpRequest.responseText);
+        console.log(httpRequest.getAllResponseHeaders());
+      }
+      else {
+        console.log("There was a problem with the request.");
+      }
+    }
+  }
+
+  var button = document.querySelector('.button');
+  button.addEventListener('click', makeRequest);
+</script>
+</body>
+</html>
+```
+
+
+
+
+
 # defer和async
+
+> [defer和async的区别](https://segmentfault.com/q/1010000000640869)
+>
+> [浅谈script标签的defer和async](https://segmentfault.com/a/1190000006778717)
 
 ![](../image/async.png)
 
@@ -383,7 +632,7 @@ a();	// 3;
 
   该属性只适合外部脚本文件。
 
-* async是指浏览器会立即异步下载js文件并执行，哪个脚本先下载完毕，哪个脚本先执行。异步脚本一定会在页面的load事件前执行，但可能会在DOMContentLoaded事件触发之前或之后执行。
+* async是指浏览器会立即异步下载js文件，当文件下载完时，渲染引擎就会中断渲染，执行这个脚本以后，再继续渲染。哪个脚本先下载完毕，哪个脚本先执行。异步脚本一定会在页面的load事件前执行，但可能会在DOMContentLoaded事件触发之前或之后执行。
 
 上图中没有上述两种属性时，js文件不是异步请求的，但是在目前的chrome中，各种资源都是进行异步请求的。
 
@@ -475,6 +724,319 @@ MVVM的调用关系和MVP一样。但是，在ViewModel当中会有一个叫Bind
 # 同源策略
 
 
+
+# 严格模式
+
+> [Javascript 严格模式详解](http://www.ruanyifeng.com/blog/2013/01/javascript_strict_mode.html)
+
+设立严格模式的目的：
+
+* 消除Javascript语法的一些不合理、不严谨之处，减少一些怪异行为;
+* 消除代码运行的一些不安全之处，保证代码运行的安全；
+* 提高编译器效率，增加运行速度；
+* 为未来新版本的Javascript做好铺垫。
+
+## 如何调用
+
+* 将"use strict"放在脚本的第一行，则整个脚本将以严格模式运行。如果这行脚本不在第一行，将无效，将以正常模式运行。
+
+  ```html
+  <script>
+  	"use strict";
+  	console.log("严格模式");
+  </script>
+  <script>
+  	console.log("正常模式");
+  </script>
+  ```
+
+  比如一个网页有两段JavaScript代码，前一个\<script>标签是在严格模式下运行，后一个不是。
+
+* 将"use strict"放在函数的第一行，那么整个函数将以严格模式运行。
+
+  ```javascript
+  function foo() {
+    "use strict";
+    console.log("严格模式");
+  }
+
+  function nofoo() {
+    console.log("正常模式");
+  }
+  ```
+
+* 第一种方法不利于文件的合并，推荐采用以下的形式：
+
+  ```javascript
+  (function() {
+    "use strict";
+    // your code
+  })();
+  ```
+
+## 语法
+
+* 全局变量显示声明
+
+  严格模式要求，所有变量都需要显示声明。而在正常模式下，如果一个变量没有声明就赋值，默认是全局变量。
+
+  ```javascript
+  "use strict";
+
+  v = 1; // 报错，v未声明
+
+  for(i = 0; i < 2; i++) { // 报错，i未声明
+  }
+  ```
+
+* 静态绑定
+
+  JavaScript语言是允许“动态绑定”的，即某些属性和方法到底属于哪个对象，不是在编译时确定的，而是在运行时确定的。严格模式对“动态绑定”做了一些现实，在某些情况下只允许静态绑定。即属性和方法到底属于哪个对象，在编译时就需要确定。这有利于编译效率的提高，同时使得代码更易于阅读，减少出错。
+
+  * 禁止使用with语句
+
+    因为with语句在编译时无法确定，属性到底属于哪个对象
+
+    ```javascript
+    "use strict";
+    var obj = {a: 1};
+    with(obj) {	// 语法错误
+      var b = a;
+    }
+    ```
+
+  * eval作用域
+
+    正常模式下，JavaScript语言有两种变量作用域：全局作用域和函数作用域，而eval语句的作用域取决于它处于全局作用域还是函数作用域。
+
+    而在严格模式下，eval语句有其自己的作用域，不能产生全局变量，它产生的变量只能用于eval内部。
+
+    ```javascript
+    "use strict";
+    var x = 2;
+    console.info(eval("var x = 5; x")); // 5
+    console.info(x); // 2
+    ```
+
+* 增强的安全措施
+
+  * 禁止this关键字指向全局对象
+
+    ```javascript
+    function f(){
+    	return !this;
+    } 
+    // 返回false，因为"this"指向全局对象，"!this"就是false
+
+    function f(){ 
+    	"use strict";
+    	return !this;
+    } 
+    // 返回true，因为严格模式下，this的值为undefined，所以"!this"为true。
+    ```
+
+    因此在使用构造函数时，如果忘了加new，this不再指向全局对象，而是为undefined，就会报错
+
+    ```javascript
+    function f(){
+    	"use strict";
+    	this.a = 1;
+    };
+
+    f();// 报错，this未定义
+    ```
+
+  * 禁止在函数内部遍历调用栈
+
+    ```javascript
+    function f1(){
+        "use strict";
+        f1.caller; // 报错
+        f1.arguments; // 报错
+    }
+
+    f1();
+    ```
+
+* 禁止删除变量
+
+  严格模式下，禁止删除变量。只有在configurable设置为true时，才能被删除。
+
+  ```javascript
+  "use strict";
+  var x;
+  delete x; // 语法错误
+
+  var o = Object.create(null, {'x': {
+  	value: 1,
+  	configurable: true
+  }});
+
+  delete o.x; // 删除成功
+  ```
+
+* 显示报错
+
+  * 在正常模式下，对一个对象的只读属性赋值，不会报错，只会默默的失败。在严格模式下，就会报错。
+
+    ```javascript
+    "use strict";
+
+    var o = {};
+    Object.defineProperty(o, "v", { value: 1, writable: false });
+    o.v = 2; // 报错
+    ```
+
+  * 严格模式下，对一个使用getter方法读取的属性赋值，将会报错。
+
+    ```javascript
+    "use strict";
+
+    var o = {
+      get v() {return 1;}
+    }
+    o.v = 2;	// 报错
+    ```
+
+  * 严格模式下，对禁止扩展的对象添加新属性，将会报错。
+
+    ```javascript
+    "use strict";
+
+    var o = {v: 1};
+    Object.preventExtensions(o);
+    o.a = 2;	// 报错
+    ```
+
+  * 严格模式下，删除一个不可删除的对象，将回报错
+
+    ```javascript
+    "use strict";
+    delete Object.prototype;
+    ```
+
+* 重名错误
+
+  * 对象不能有重名的属性
+
+    在正常模式下，如果对象有多个重名的属性，最后赋值的属性将会覆盖前面的值。严格模式下，这属于语法错误。
+
+    ```javascript
+    "use strict";
+
+    var o = {
+    	p: 1,
+    	p: 2
+    }; // 语法错误
+    ```
+
+    > 奇怪的是，在chrome下没有报错
+
+  * 函数不能有重名的参数
+
+    在正常模式下，函数中重名的参数可以使用arguments[i]获取。在严格模式下，会报错。
+
+    ```javascript
+    "use strict";
+
+    function f(a, a, b) { // 语法错误
+    	return ;
+    }
+    ```
+
+* 禁止八进制表示法
+
+  在正常模式下，整数的第一位如果是0，表示这是八进制，如0100等于十进制的64。在严格模式下，如果整数第一位为0，将会报错。
+
+  ```javascript
+  "use strict";
+  var a = 0100;	// 报错
+  ```
+
+* arguments对象的限制
+
+  arguments是函数的参数对象，严格模式对其做出了一些限制
+
+  * 不允许对arguments赋值
+
+    ```javascript
+    "use strict";
+
+    arguments++; // 语法错误
+
+    var obj = { set p(arguments) { } }; // 语法错误
+
+    try { } catch (arguments) { } // 语法错误
+
+    function arguments() { } // 语法错误
+
+    var f = new Function("arguments", "'use strict'; return 17;"); // 语法错误
+    ```
+
+  * arguments不再追踪参数的变化
+
+    ```javascript
+    // 正常模式
+    function foo(a) {
+    	a = 2;
+    	console.log(a, arguments[0]);
+    }
+    foo(1); // 2, 2
+        
+    // 严格模式
+    "use strict";
+
+    function foo(a) {
+    	a = 2;
+    	console.log(a, arguments[0]);
+    }
+    foo(1);	// 2, 1
+    ```
+
+  * 禁止使用arguments.callee
+
+    这意味着，无法在匿名函数下调用其自身
+
+    ```javascript
+    "use strict";
+
+    var f = function() { return arguments.callee; };
+    f(); // 报错
+    ```
+
+* 函数声明在顶层
+
+  将来会在JavaScript的新版本引入“块级作用域”。为了与新版本接轨，严格模式只允许字啊全局作用域或函数作用域的顶层下声明函数。即不能在非函数的作用域下声明函数。
+
+  ```javascript
+  "use strict";
+
+  if (true) {
+  	function f() { } // 语法错误
+  }
+
+  for (var i = 0; i < 5; i++) {
+  	function f2() { } // 语法错误
+  }
+  ```
+
+  > 在chrome下，没有报错，但是声明的两个函数没有成功声明
+
+* 保留字
+
+  为了向将来Javascript的新版本过渡，严格模式新增了一些保留字：implements, interface, let, package, private, protected, public, static, yield。
+
+  使用这些词作为变量名将会报错。
+
+  ```javascript
+  function package(protected) { // 语法错误
+  	"use strict";
+
+  	var implements; // 语法错误
+  }
+  ```
+
+  ​
 
 
 
