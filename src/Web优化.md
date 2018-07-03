@@ -8,4 +8,6 @@
 <link rel="dns-prefetch" href="//g.alicdn.com">
 ```
 
-dns-prefetch是指对DNS的与读取，即浏览器在后台执行DNS预读取功能，那么DNS很可能在访问链接前就已经解析完毕了，从而减少用户点击链接是的延迟。
+dns-prefetch是一种DNS预解析技术。即浏览器会在加载网页时对网页中的域名进行解析缓存，当你点击当前网页中的链接时无需进行DNS解析，减少了用户等待时间，提高用户体验。
+
+目前大多数浏览器已支持该属性，其中 Chrome 和 Firefox 3.5+ 内置了 DNS Prefetching 技术并对DNS预解析做了相应优化设置。 
